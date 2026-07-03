@@ -1,22 +1,26 @@
 import os
-import requests
+import io
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
+from huggingface_hub import InferenceClient
 
-# Environment Variables ကနေ Token တွေယူပါ
 TELEGRAM_TOKEN = os.getenv("BOT_TOKEN")
 HF_API_TOKEN = os.getenv("HUGGING_FACE_API_TOKEN")
 
+# Model ID ကို လူသုံးများပြီး အလုပ်လုပ်နိုင်တဲ့ Model နဲ့ ပြောင်းထားပါတယ်
+MODEL_ID = "stabilityai/stable-diffusion-2-1"  # ဒါမှမဟုတ် "runwayml/stable-diffusion-v1-5"
+
 def generate_image(prompt):
-    """Hugging Face API ကိုသုံးပြီး ပုံထုတ်တယ်"""
-    API_URL = "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell"
-    headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
-    
+    """Hugging Face InferenceClient ကိုသုံးပြီး ပုံထုတ်တယ်"""
     try:
-        response = requests.post(API_URL, headers=headers, json={"inputs": prompt}, timeout=60)
-        if response.status_code == 200:
-            return response.content
-        return None
+        client = InferenceClient(model=MODEL_ID, token=HF_API_TOKEN)
+        # text_to_image က PIL Image ပြန်ပေးတယ်
+        image = client.text_to_image(prompt)
+        # PIL Image ကို bytes အဖြစ်ပြောင်းမယ်
+        img_bytes = io.BytesIO()
+        image.save(img_bytes, format='PNG')
+        img_bytes.seek(0)
+        return img_bytes.getvalue()
     except Exception as e:
         print(f"Error: {e}")
         return None
